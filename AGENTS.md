@@ -30,7 +30,7 @@ Java 21 (Gradle toolchain). JUnit 5 (Jupiter).
   the rounding mode as an argument. Never use `double`/`float` for amounts.
 - **No cross-currency arithmetic.** `Money` throws on mismatch; never convert implicitly.
 - **Every tunable value comes from settings** (fee, interest rate, hold expiry days, back-value
-  limit, settlement tolerance, rounding mode, instalment remainder). No magic numbers in services.
+  limit, rounding mode, instalment remainder). No magic numbers in services.
   Each one is documented in `NUMBERS.md` with why that value and not half of it.
 - **Values in use are written onto records** (e.g. `expiresOn`, the fee amount), so changing
   settings never rewrites history.
