@@ -36,3 +36,6 @@ expire holds
 
 ## 2026-11-20 01:00
 write ambiguities and numbers
+
+## 2026-11-20 01:28
+write rejected.md
