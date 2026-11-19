@@ -4,6 +4,10 @@ import com.mcledger.dtos.EventRequest;
 import com.mcledger.dtos.EventResult;
 import com.mcledger.dtos.EventType;
 import com.mcledger.models.Account;
+import com.mcledger.models.AuthEvent;
+import com.mcledger.models.AuthEventType;
+import com.mcledger.repositories.AuthEventRepository;
+import com.mcledger.repositories.AuthEventRepositoryInMemory;
 import com.mcledger.models.LedgerEntry;
 import com.mcledger.models.RejectionReason;
 import com.mcledger.money.Money;
@@ -36,8 +40,10 @@ class LedgerServiceTest {
 
     private final AccountRepository accountRepository = new AccountRepositoryInMemory();
     private final LedgerEntryRepository ledgerEntryRepository = new LedgerEntryRepositoryInMemory();
+    private final AuthEventRepository authEventRepository = new AuthEventRepositoryInMemory();
     private final RejectedEventRepository rejectedEventRepository = new RejectedEventRepositoryInMemory();
-    private final LedgerService service = new LedgerService(accountRepository, ledgerEntryRepository, rejectedEventRepository,
+    private final LedgerService service = new LedgerService(
+            accountRepository, ledgerEntryRepository, authEventRepository, rejectedEventRepository,
             fixedConfigService()
                     .overdraftFee(Money.of(AED, "25.00"))
                     .dailyInterestRate(AED, new BigDecimal("0.0004"))
@@ -64,6 +70,60 @@ class LedgerServiceTest {
         assertThrows(NullPointerException.class, () -> service.handleEvent(eventRequest().requestId("X")
                 .eventType(EventType.CREDIT).accountId(UUID.randomUUID()).amount(Money.of(AED, "1.00"))
                 .bookedDay(day(1)).valueDate(day(1)).build()));
+    }
+
+    private AuthEvent authorized(EventResult result) {
+        return assertInstanceOf(EventResult.Authorized.class, result).authEvent();
+    }
+
+    @Test
+    void holdWithinAvailableBalanceIsApprovedAndLeavesLedgerUntouched() {
+        service.handleEvent(event("E1", EventType.CREDIT, "1200.00", 1, 1));
+        service.handleEvent(event("E2", EventType.DEBIT, "950.00", 1, 1));
+
+        final var auth = authorized(service.handleEvent(event("E3", EventType.AUTHORIZATION, "200.00", 2, 2)));
+
+        assertEquals(AuthEventType.APPROVED, auth.type());
+        assertEquals(Money.of(AED, "250.00"), balanceAsOf(2));
+    }
+
+    @Test
+    void holdUsingExactlyTheAvailableBalanceIsApproved() {
+        service.handleEvent(event("E1", EventType.CREDIT, "250.00", 1, 1));
+
+        assertEquals(AuthEventType.APPROVED,
+                authorized(service.handleEvent(event("A1", EventType.AUTHORIZATION, "250.00", 1, 1))).type());
+    }
+
+    @Test
+    void activeHoldsReduceAvailableBalance() {
+        service.handleEvent(event("E1", EventType.CREDIT, "250.00", 1, 1));
+        service.handleEvent(event("A1", EventType.AUTHORIZATION, "200.00", 1, 1));
+
+        assertEquals(AuthEventType.DECLINED,
+                authorized(service.handleEvent(event("A2", EventType.AUTHORIZATION, "50.01", 1, 1))).type());
+        assertEquals(AuthEventType.APPROVED,
+                authorized(service.handleEvent(event("A3", EventType.AUTHORIZATION, "50.00", 1, 1))).type());
+    }
+
+    @Test
+    void e8IsDeclinedAfterBackdatedE7() {
+        service.handleEvent(event("E1", EventType.CREDIT, "1200.00", 1, 1));
+        service.handleEvent(event("E2", EventType.DEBIT, "950.00", 1, 1));
+        service.handleEvent(event("E4", EventType.CREDIT, "400.00", 3, 3));
+        service.handleEvent(event("E7", EventType.DEBIT, "620.00", 5, 2));
+
+        assertEquals(AuthEventType.DECLINED,
+                authorized(service.handleEvent(event("E8", EventType.AUTHORIZATION, "90.00", 5, 5))).type());
+    }
+
+    @Test
+    void sameAuthorizationTwiceIsRecordedOnce() {
+        service.handleEvent(event("E1", EventType.CREDIT, "250.00", 1, 1));
+        final var first = authorized(service.handleEvent(event("A1", EventType.AUTHORIZATION, "200.00", 1, 1)));
+
+        assertSame(first, authorized(service.handleEvent(event("A1", EventType.AUTHORIZATION, "200.00", 1, 1))));
+        assertEquals(1, authEventRepository.findByAccountId(ACC).size());
     }
 
     private static LocalDate day(int n) {

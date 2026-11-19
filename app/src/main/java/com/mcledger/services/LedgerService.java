@@ -5,6 +5,7 @@ import com.mcledger.dtos.EventRequest;
 import com.mcledger.dtos.EventResult;
 import com.mcledger.models.RejectionReason;
 import com.mcledger.repositories.AccountRepository;
+import com.mcledger.repositories.AuthEventRepository;
 import com.mcledger.repositories.LedgerEntryRepository;
 import com.mcledger.repositories.RejectedEventRepository;
 import com.mcledger.services.events.EventHandlerFactory;
@@ -20,12 +21,14 @@ public final class LedgerService {
 
     public LedgerService(AccountRepository accountRepository,
                          LedgerEntryRepository ledgerEntryRepository,
+                         AuthEventRepository authEventRepository,
                          RejectedEventRepository rejectedEventRepository,
                          ConfigService configService) {
         this.accountRepository = accountRepository;
         this.rejectedEventRepository = rejectedEventRepository;
         this.configService = configService;
-        this.eventHandlerFactory = new EventHandlerFactory(ledgerEntryRepository, rejectedEventRepository);
+        this.eventHandlerFactory =
+            new EventHandlerFactory(ledgerEntryRepository, authEventRepository, rejectedEventRepository);
     }
 
     public EventResult handleEvent(EventRequest request) {

@@ -14,3 +14,6 @@ add basic impl of LedgerService, with EventHandlerFactory having CREDIT, DEBIT a
 
 ## 2026-11-19 20:04
 add EventSimulatorTest replaying events from task
+
+## 2026-11-19 20:19
+implement AuthorizationEventHandler

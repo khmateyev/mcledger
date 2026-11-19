@@ -4,6 +4,8 @@ import com.mcledger.config.ConfigService;
 import com.mcledger.money.Money;
 import com.mcledger.repositories.AccountRepository;
 import com.mcledger.repositories.AccountRepositoryInMemory;
+import com.mcledger.repositories.AuthEventRepository;
+import com.mcledger.repositories.AuthEventRepositoryInMemory;
 import com.mcledger.repositories.LedgerEntryRepository;
 import com.mcledger.repositories.LedgerEntryRepositoryInMemory;
 import com.mcledger.repositories.RejectedEventRepository;
@@ -28,10 +30,11 @@ public class AppContainer {
 
     private final AccountRepository accountRepository = new AccountRepositoryInMemory();
     private final LedgerEntryRepository ledgerEntryRepository = new LedgerEntryRepositoryInMemory();
+    private final AuthEventRepository authEventRepository = new AuthEventRepositoryInMemory();
     private final RejectedEventRepository rejectedEventRepository = new RejectedEventRepositoryInMemory();
 
-    private final LedgerService ledgerService =
-        new LedgerService(accountRepository, ledgerEntryRepository, rejectedEventRepository, configService);
+    private final LedgerService ledgerService = new LedgerService(
+        accountRepository, ledgerEntryRepository, authEventRepository, rejectedEventRepository, configService);
 
     public ConfigService configService() {
         return configService;
@@ -43,6 +46,10 @@ public class AppContainer {
 
     public LedgerEntryRepository ledgerEntryRepository() {
         return ledgerEntryRepository;
+    }
+
+    public AuthEventRepository authEventRepository() {
+        return authEventRepository;
     }
 
     public RejectedEventRepository rejectedEventRepository() {
