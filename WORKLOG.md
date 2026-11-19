@@ -33,3 +33,6 @@ implement DayCloseService, update EventSimulatorTest
 
 ## 2026-11-19 23:40
 expire holds
+
+## 2026-11-20 01:00
+write ambiguities and numbers
