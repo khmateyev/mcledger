@@ -10,7 +10,10 @@ fee assessments, authorization states and errors. Accounts: ACC-001 (AED) and AC
 
 ## Layout
 
-- `app/`: the ledger. All new code goes here, under `com.mcledger.*`.
+- `app/`: the ledger. All new code goes here, under `com.mcledger.*`:
+  `dtos` (requests/results), `models` (stored data), `repositories` (interface + `*InMemory`),
+  `services` (logic), `services.events` (one handler per event type, picked by `EventHandlerFactory`).
+- Keep it simple: add a method, field or check only when something uses it.
 
 ## Commands
 
@@ -42,7 +45,7 @@ Java 21 (Gradle toolchain). JUnit 5 (Jupiter).
 
 - Immutable types: records or final classes, `final` locals, `List.copyOf` for returned lists.
 - Data classes with more than 2 properties are built through a builder (static factory such as
-  `LedgerEntry.ledgerEntry()`, fluent setters, `build()`), never a long positional constructor.
+  `EventRequest.eventRequest()`, fluent setters, `build()`), never a long positional constructor.
   Data classes with 1–2 properties use a constructor or static factory (e.g. `Money.of`).
 - Validate in constructors; fail fast with a message that names the bad value.
 - Tests sit next to the package they cover; name them after behavior, not methods.
