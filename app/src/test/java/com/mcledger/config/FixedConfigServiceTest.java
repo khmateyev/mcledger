@@ -4,6 +4,7 @@ import com.mcledger.money.Money;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 import static com.mcledger.config.FixedConfigService.fixedConfigService;
 import static com.mcledger.money.CurrencyCode.AED;
@@ -20,7 +21,9 @@ class FixedConfigServiceTest {
                 .dailyInterestRate(AED, new BigDecimal("0.0004"))
                 .dailyInterestRate(BHD, new BigDecimal("0.0004"))
                 .holdExpiryDays(7)
-                .maxBackValueDays(5);
+                .maxBackValueDays(5)
+                .roundingMode(RoundingMode.HALF_UP)
+                .interestPeriodDays(6);
     }
 
     @Test
@@ -32,6 +35,8 @@ class FixedConfigServiceTest {
         assertEquals(new BigDecimal("0.0004"), config.dailyInterestRate(BHD));
         assertEquals(7, config.holdExpiryDays());
         assertEquals(5, config.maxBackValueDays());
+        assertEquals(RoundingMode.HALF_UP, config.roundingMode());
+        assertEquals(6, config.interestPeriodDays());
     }
 
     @Test
@@ -46,6 +51,8 @@ class FixedConfigServiceTest {
                 .dailyInterestRate(BHD, BigDecimal.ZERO)
                 .holdExpiryDays(1)
                 .maxBackValueDays(0)
+                .roundingMode(RoundingMode.HALF_UP)
+                .interestPeriodDays(6)
                 .build();
         assertEquals(0, config.maxBackValueDays());
         assertEquals(BigDecimal.ZERO, config.dailyInterestRate(AED));
@@ -57,6 +64,8 @@ class FixedConfigServiceTest {
                 .dailyInterestRate(AED, new BigDecimal("0.0004"))
                 .holdExpiryDays(7)
                 .maxBackValueDays(5)
+                .roundingMode(RoundingMode.HALF_UP)
+                .interestPeriodDays(6)
                 .build());
     }
 
@@ -70,13 +79,27 @@ class FixedConfigServiceTest {
                 .dailyInterestRate(BHD, BigDecimal.ZERO)
                 .holdExpiryDays(7)
                 .maxBackValueDays(5)
+                .roundingMode(RoundingMode.HALF_UP)
+                .interestPeriodDays(6)
                 .build());
         assertThrows(IllegalArgumentException.class, () -> fixedConfigService()
                 .dailyInterestRate(AED, new BigDecimal("-0.0001"))
                 .dailyInterestRate(BHD, BigDecimal.ZERO)
                 .holdExpiryDays(7)
                 .maxBackValueDays(5)
+                .roundingMode(RoundingMode.HALF_UP)
+                .interestPeriodDays(6)
                 .build());
+    }
+
+    @Test
+    void interestPeriodMustBeAtLeastOneDay() {
+        assertThrows(IllegalArgumentException.class, () -> valid().interestPeriodDays(0).build());
+    }
+
+    @Test
+    void roundingModeIsRequired() {
+        assertThrows(NullPointerException.class, () -> valid().roundingMode(null).build());
     }
 
     @Test
@@ -85,6 +108,8 @@ class FixedConfigServiceTest {
                 .dailyInterestRate(AED, BigDecimal.ZERO)
                 .dailyInterestRate(BHD, BigDecimal.ZERO)
                 .maxBackValueDays(5)
+                .roundingMode(RoundingMode.HALF_UP)
+                .interestPeriodDays(6)
                 .build());
         assertThrows(NullPointerException.class, () -> fixedConfigService()
                 .dailyInterestRate(AED, BigDecimal.ZERO)

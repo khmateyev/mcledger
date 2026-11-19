@@ -4,6 +4,7 @@ import com.mcledger.money.CurrencyCode;
 import com.mcledger.money.Money;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
@@ -17,12 +18,16 @@ public final class FixedConfigService implements ConfigService {
     private final Map<CurrencyCode, BigDecimal> dailyInterestRates;
     private final int holdExpiryDays;
     private final int maxBackValueDays;
+    private final RoundingMode roundingMode;
+    private final int interestPeriodDays;
 
     private FixedConfigService(Builder builder) {
         this.overdraftFees = Map.copyOf(builder.overdraftFees);
         this.dailyInterestRates = Map.copyOf(builder.dailyInterestRates);
         this.holdExpiryDays = requireNonNull(builder.holdExpiryDays, "holdExpiryDays");
         this.maxBackValueDays = requireNonNull(builder.maxBackValueDays, "maxBackValueDays");
+        this.roundingMode = requireNonNull(builder.roundingMode, "roundingMode");
+        this.interestPeriodDays = requireNonNull(builder.interestPeriodDays, "interestPeriodDays");
 
         overdraftFees.values().forEach(fee -> {
             if (!fee.isPositive()) {
@@ -40,6 +45,9 @@ public final class FixedConfigService implements ConfigService {
         }
         if (holdExpiryDays < 1) {
             throw new IllegalArgumentException("holdExpiryDays must be >= 1, was " + holdExpiryDays);
+        }
+        if (interestPeriodDays < 1) {
+            throw new IllegalArgumentException("interestPeriodDays must be >= 1, was " + interestPeriodDays);
         }
         if (maxBackValueDays < 0) {
             throw new IllegalArgumentException("maxBackValueDays must be >= 0, was " + maxBackValueDays);
@@ -70,12 +78,24 @@ public final class FixedConfigService implements ConfigService {
         return maxBackValueDays;
     }
 
+    @Override
+    public RoundingMode roundingMode() {
+        return roundingMode;
+    }
+
+    @Override
+    public int interestPeriodDays() {
+        return interestPeriodDays;
+    }
+
     public static final class Builder {
 
         private final Map<CurrencyCode, Money> overdraftFees = new EnumMap<>(CurrencyCode.class);
         private final Map<CurrencyCode, BigDecimal> dailyInterestRates = new EnumMap<>(CurrencyCode.class);
         private Integer holdExpiryDays;
         private Integer maxBackValueDays;
+        private RoundingMode roundingMode;
+        private Integer interestPeriodDays;
 
         private Builder() {
         }
@@ -104,6 +124,16 @@ public final class FixedConfigService implements ConfigService {
 
         public Builder maxBackValueDays(int maxBackValueDays) {
             this.maxBackValueDays = maxBackValueDays;
+            return this;
+        }
+
+        public Builder roundingMode(RoundingMode roundingMode) {
+            this.roundingMode = roundingMode;
+            return this;
+        }
+
+        public Builder interestPeriodDays(int interestPeriodDays) {
+            this.interestPeriodDays = interestPeriodDays;
             return this;
         }
 

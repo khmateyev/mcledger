@@ -3,7 +3,6 @@ package com.mcledger.services;
 import com.mcledger.dtos.EventRequest;
 import com.mcledger.dtos.EventResult;
 import com.mcledger.dtos.EventType;
-import com.mcledger.models.Account;
 import com.mcledger.models.AuthEvent;
 import com.mcledger.models.AuthEventType;
 import com.mcledger.repositories.AuthEventRepository;
@@ -21,9 +20,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import static com.mcledger.models.Account.account;
 import static com.mcledger.config.FixedConfigService.fixedConfigService;
 import static com.mcledger.dtos.EventRequest.eventRequest;
 import static com.mcledger.money.CurrencyCode.AED;
@@ -50,12 +51,14 @@ class LedgerServiceTest {
                     .dailyInterestRate(BHD, new BigDecimal("0.0004"))
                     .holdExpiryDays(7)
                     .maxBackValueDays(5)
+                    .roundingMode(RoundingMode.HALF_UP)
+                    .interestPeriodDays(6)
                     .build());
 
     @BeforeEach
     void createAccounts() {
-        accountRepository.create(new Account(ACC, AED));
-        accountRepository.create(new Account(ACC_BHD, BHD));
+        accountRepository.create(account().id(ACC).number("ACC-001").currency(AED).openedOn(day(1)).build());
+        accountRepository.create(account().id(ACC_BHD).number("ACC-002").currency(BHD).openedOn(day(1)).build());
     }
 
     @Test

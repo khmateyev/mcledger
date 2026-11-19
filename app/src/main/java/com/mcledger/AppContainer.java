@@ -10,9 +10,11 @@ import com.mcledger.repositories.LedgerEntryRepository;
 import com.mcledger.repositories.LedgerEntryRepositoryInMemory;
 import com.mcledger.repositories.RejectedEventRepository;
 import com.mcledger.repositories.RejectedEventRepositoryInMemory;
+import com.mcledger.services.DayCloseService;
 import com.mcledger.services.LedgerService;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 import static com.mcledger.config.FixedConfigService.fixedConfigService;
 import static com.mcledger.money.CurrencyCode.AED;
@@ -26,6 +28,8 @@ public class AppContainer {
         .dailyInterestRate(BHD, new BigDecimal("0.0004"))
         .holdExpiryDays(7)
         .maxBackValueDays(5)
+        .roundingMode(RoundingMode.HALF_UP)
+        .interestPeriodDays(6)
         .build();
 
     private final AccountRepository accountRepository = new AccountRepositoryInMemory();
@@ -34,6 +38,9 @@ public class AppContainer {
     private final RejectedEventRepository rejectedEventRepository = new RejectedEventRepositoryInMemory();
 
     private final LedgerService ledgerService = new LedgerService(
+        accountRepository, ledgerEntryRepository, authEventRepository, rejectedEventRepository, configService);
+
+    private final DayCloseService dayCloseService = new DayCloseService(
         accountRepository, ledgerEntryRepository, authEventRepository, rejectedEventRepository, configService);
 
     public ConfigService configService() {
@@ -58,5 +65,9 @@ public class AppContainer {
 
     public LedgerService ledgerService() {
         return ledgerService;
+    }
+
+    public DayCloseService dayCloseService() {
+        return dayCloseService;
     }
 }
