@@ -126,6 +126,64 @@ class LedgerServiceTest {
         assertEquals(1, authEventRepository.findByAccountId(ACC).size());
     }
 
+    private static EventRequest settlement(String id, String authRequestId, String amount, int day) {
+        return eventRequest().requestId(id).eventType(EventType.SETTLEMENT).accountId(ACC)
+                .authRequestId(authRequestId).amount(Money.of(AED, amount)).bookedDay(day(day)).valueDate(day(day)).build();
+    }
+
+    @Test
+    void e5SettlesAuthABelowTheHoldAndReleasesIt() {
+        service.handleEvent(event("E1", EventType.CREDIT, "1200.00", 1, 1));
+        service.handleEvent(event("E2", EventType.DEBIT, "950.00", 1, 1));
+        service.handleEvent(event("E3", EventType.AUTHORIZATION, "200.00", 2, 2));
+
+        final var e5 = posted(service.handleEvent(settlement("E5", "E3", "185.00", 4)));
+
+        assertEquals(Money.of(AED, "-185.00"), e5.amount());
+        assertEquals(Money.of(AED, "65.00"), balanceAsOf(4));
+        // the whole 200.00 hold is released: 65.00 is available again
+        assertEquals(AuthEventType.APPROVED,
+                authorized(service.handleEvent(event("A2", EventType.AUTHORIZATION, "65.00", 4, 4))).type());
+    }
+
+    @Test
+    void e6SettlementWithoutAuthorizationIsRejectedAndMovesNoMoney() {
+        service.handleEvent(event("E1", EventType.CREDIT, "1200.00", 1, 1));
+
+        rejected(service.handleEvent(settlement("E6", "Auth-Z", "180.00", 4)), RejectionReason.AUTHORIZATION_NOT_FOUND);
+        assertEquals(Money.of(AED, "1200.00"), balanceAsOf(4));
+    }
+
+    @Test
+    void settlementAboveTheAuthorizedAmountIsRejected() {
+        service.handleEvent(event("E1", EventType.CREDIT, "1200.00", 1, 1));
+        service.handleEvent(event("A1", EventType.AUTHORIZATION, "200.00", 2, 2));
+
+        rejected(service.handleEvent(settlement("S1", "A1", "200.01", 4)), RejectionReason.SETTLEMENT_ABOVE_AUTHORIZED);
+        posted(service.handleEvent(settlement("S2", "A1", "200.00", 4)));
+    }
+
+    @Test
+    void declinedOrAlreadySettledAuthorizationCannotBeSettled() {
+        service.handleEvent(event("E1", EventType.CREDIT, "100.00", 1, 1));
+        service.handleEvent(event("A1", EventType.AUTHORIZATION, "500.00", 2, 2));
+        rejected(service.handleEvent(settlement("S1", "A1", "50.00", 4)), RejectionReason.AUTHORIZATION_NOT_APPROVED);
+
+        service.handleEvent(event("A2", EventType.AUTHORIZATION, "50.00", 2, 2));
+        posted(service.handleEvent(settlement("S2", "A2", "50.00", 4)));
+        rejected(service.handleEvent(settlement("S3", "A2", "50.00", 4)), RejectionReason.AUTHORIZATION_ALREADY_SETTLED);
+    }
+
+    @Test
+    void sameSettlementTwiceIsPostedOnce() {
+        service.handleEvent(event("E1", EventType.CREDIT, "1200.00", 1, 1));
+        service.handleEvent(event("A1", EventType.AUTHORIZATION, "200.00", 2, 2));
+        final var first = posted(service.handleEvent(settlement("S1", "A1", "185.00", 4)));
+
+        assertSame(first, posted(service.handleEvent(settlement("S1", "A1", "185.00", 4))));
+        assertEquals(Money.of(AED, "1015.00"), balanceAsOf(4));
+    }
+
     private static LocalDate day(int n) {
         return LocalDate.of(2026, 1, n);
     }

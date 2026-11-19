@@ -17,3 +17,6 @@ add EventSimulatorTest replaying events from task
 
 ## 2026-11-19 20:19
 implement AuthorizationEventHandler
+
+## 2026-11-19 20:23
+implement SettlementEventHandler

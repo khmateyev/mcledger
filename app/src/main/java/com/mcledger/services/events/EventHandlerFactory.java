@@ -19,6 +19,8 @@ public class EventHandlerFactory {
             EventType.CREDIT, new PostEntryEventHandler(ledgerEntryRepository, EntryType.CREDIT, false),
             EventType.DEBIT, new PostEntryEventHandler(ledgerEntryRepository, EntryType.DEBIT, true),
             EventType.AUTHORIZATION, new AuthorizationEventHandler(ledgerEntryRepository, authEventRepository),
+            EventType.SETTLEMENT,
+            new SettlementEventHandler(ledgerEntryRepository, authEventRepository, rejectedEventRepository),
             EventType.REVERSAL, new ReversalEventHandler(ledgerEntryRepository, rejectedEventRepository)
         );
     }

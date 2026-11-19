@@ -27,6 +27,11 @@ public class AuthEventRepositoryInMemory implements AuthEventRepository {
     }
 
     @Override
+    public List<AuthEvent> findByAuthRequestId(String authRequestId) {
+        return db.stream().filter(it -> it.authRequestId().equals(authRequestId)).toList();
+    }
+
+    @Override
     public AuthEvent create(AuthEvent event) {
         final var previous = byRequestId.putIfAbsent(event.requestId(), event);
         if (previous != null) {

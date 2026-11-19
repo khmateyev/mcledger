@@ -10,6 +10,7 @@ import com.mcledger.repositories.AuthEventRepository;
 import com.mcledger.repositories.LedgerEntryRepository;
 
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static com.mcledger.models.AuthEvent.authEvent;
 import static java.util.UUID.randomUUID;
@@ -45,6 +46,7 @@ class AuthorizationEventHandler implements EventHandler {
             authEvent()
                 .id(randomUUID())
                 .requestId(request.getRequestId())
+                .authRequestId(request.getRequestId())
                 .accountId(request.getAccountId())
                 .type(approved ? AuthEventType.APPROVED : AuthEventType.DECLINED)
                 .amount(holdAmount)
@@ -62,8 +64,14 @@ class AuthorizationEventHandler implements EventHandler {
     }
 
     private Money activeHolds(UUID accountId, Money currencyOf) {
-        return authEventRepository.findByAccountId(accountId).stream()
-            .filter(it -> it.type() == AuthEventType.APPROVED)
+        final var authEvents = authEventRepository.findByAccountId(accountId);
+        final var settledAuthRequestIds = authEvents.stream()
+            .filter(it -> it.type() == AuthEventType.SETTLED)
+            .map(AuthEvent::authRequestId)
+            .collect(Collectors.toSet());
+
+        return authEvents.stream()
+            .filter(it -> it.type() == AuthEventType.APPROVED && !settledAuthRequestIds.contains(it.authRequestId()))
             .map(AuthEvent::amount)
             .reduce(Money.zero(currencyOf.currency()), Money::plus);
     }

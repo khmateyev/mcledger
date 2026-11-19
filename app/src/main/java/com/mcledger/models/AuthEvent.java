@@ -11,6 +11,7 @@ public final class AuthEvent {
 
     private final UUID id;
     private final String requestId;
+    private final String authRequestId;
     private final UUID accountId;
     private final AuthEventType type;
     private final Money amount;
@@ -19,6 +20,7 @@ public final class AuthEvent {
     private AuthEvent(Builder builder) {
         this.id = requireNonNull(builder.id, "id");
         this.requestId = requireNonNull(builder.requestId, "requestId");
+        this.authRequestId = requireNonNull(builder.authRequestId, "authRequestId");
         this.accountId = requireNonNull(builder.accountId, "accountId");
         this.type = requireNonNull(builder.type, "type");
         this.amount = requireNonNull(builder.amount, "amount");
@@ -31,6 +33,10 @@ public final class AuthEvent {
 
     public String requestId() {
         return requestId;
+    }
+
+    public String authRequestId() {
+        return authRequestId;
     }
 
     public UUID accountId() {
@@ -55,13 +61,14 @@ public final class AuthEvent {
 
     @Override
     public String toString() {
-        return "AuthEvent[%s %s %s %s %s]".formatted(requestId, accountId, type, amount, bookedDay);
+        return "AuthEvent[%s auth=%s %s %s %s %s]".formatted(requestId, authRequestId, accountId, type, amount, bookedDay);
     }
 
     public static final class Builder {
 
         private UUID id;
         private String requestId;
+        private String authRequestId;
         private UUID accountId;
         private AuthEventType type;
         private Money amount;
@@ -77,6 +84,11 @@ public final class AuthEvent {
 
         public Builder requestId(String requestId) {
             this.requestId = requestId;
+            return this;
+        }
+
+        public Builder authRequestId(String authRequestId) {
+            this.authRequestId = authRequestId;
             return this;
         }
 

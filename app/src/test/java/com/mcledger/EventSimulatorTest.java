@@ -33,6 +33,11 @@ class EventSimulatorTest {
             .amount(amount).bookedDay(day(booked)).valueDate(day(value)).build();
     }
 
+    private static EventRequest settlement(String id, String authRequestId, Money amount, int day) {
+        return eventRequest().requestId(id).eventType(EventType.SETTLEMENT).accountId(ACC_001)
+            .authRequestId(authRequestId).amount(amount).bookedDay(day(day)).valueDate(day(day)).build();
+    }
+
     @Test
     void replaysTheEventStream() {
         container.accountRepository().create(new Account(ACC_001, AED));
@@ -45,8 +50,8 @@ class EventSimulatorTest {
             event("E2", EventType.DEBIT, ACC_001, Money.of(AED, "950.00"), 1, 1),
             event("E3", EventType.AUTHORIZATION, ACC_001, Money.of(AED, "200.00"), 2, 2),
             event("E4", EventType.CREDIT, ACC_001, Money.of(AED, "400.00"), 3, 3),
-            // E5: SETTLEMENT Auth-A for AED 185.00, Day 4 (no SETTLEMENT event type yet)
-            // E6: SETTLEMENT Auth-Z for AED 180.00, Day 4 (no SETTLEMENT event type yet)
+            settlement("E5", "E3", Money.of(AED, "185.00"), 4),
+            settlement("E6", "Auth-Z", Money.of(AED, "180.00"), 4),
             event("E7", EventType.DEBIT, ACC_001, Money.of(AED, "620.00"), 5, 2),
             event("E8", EventType.AUTHORIZATION, ACC_001, Money.of(AED, "90.00"), 5, 5),
             eventRequest().requestId("E9").eventType(EventType.REVERSAL).accountId(ACC_001)

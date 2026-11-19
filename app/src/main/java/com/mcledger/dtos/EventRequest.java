@@ -18,6 +18,7 @@ public class EventRequest {
     private final LocalDate bookedDay;
     private final Optional<Money> amount;
     private final Optional<String> reversesRequestId;
+    private final Optional<String> authRequestId;
 
     private EventRequest(Builder builder) {
         this.requestId = requireNonNull(builder.requestId, "requestId");
@@ -27,11 +28,15 @@ public class EventRequest {
         this.bookedDay = requireNonNull(builder.bookedDay, "bookedDay");
         this.amount = builder.amount;
         this.reversesRequestId = builder.reversesRequestId;
+        this.authRequestId = builder.authRequestId;
 
         validate();
     }
 
     private void validate() {
+        if ((eventType == EventType.SETTLEMENT) != authRequestId.isPresent()) {
+            throw new IllegalArgumentException("authRequestId has to be present for SETTLEMENT only");
+        }
         if (eventType == EventType.REVERSAL) {
             if (reversesRequestId.isEmpty()) {
                 throw new IllegalArgumentException("reversesRequestId has to be present for REVERSAL");
@@ -91,6 +96,15 @@ public class EventRequest {
                 .orElseThrow(() -> new IllegalStateException("reversesRequestId is required for REVERSAL"));
     }
 
+    public Optional<String> getAuthRequestId() {
+        return authRequestId;
+    }
+
+    public String requiredAuthRequestId() {
+        return getAuthRequestId()
+                .orElseThrow(() -> new IllegalStateException("authRequestId is required for SETTLEMENT"));
+    }
+
     public static final class Builder {
 
         private String requestId;
@@ -100,6 +114,7 @@ public class EventRequest {
         private LocalDate bookedDay;
         private Optional<Money> amount = Optional.empty();
         private Optional<String> reversesRequestId = Optional.empty();
+        private Optional<String> authRequestId = Optional.empty();
 
         private Builder() {
         }
@@ -145,6 +160,11 @@ public class EventRequest {
 
         public Builder reversesRequestId(String reversesRequestId) {
             return reversesRequestId(ofNullable(reversesRequestId));
+        }
+
+        public Builder authRequestId(String authRequestId) {
+            this.authRequestId = ofNullable(authRequestId);
+            return this;
         }
 
         public EventRequest build() {
