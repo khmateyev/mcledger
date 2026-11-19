@@ -11,7 +11,8 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 class EventHandlerFactoryTest {
 
     private final EventHandlerFactory factory = new EventHandlerFactory(
-            new LedgerEntryRepositoryInMemory(), new AuthEventRepositoryInMemory(), new RejectedEventRepositoryInMemory());
+            new LedgerEntryRepositoryInMemory(), new AuthEventRepositoryInMemory(), new RejectedEventRepositoryInMemory(),
+            HandlerFixtures.CONFIG);
 
     @Test
     void everyEventTypeHasItsHandler() {

@@ -4,6 +4,7 @@ import com.mcledger.AppContainer;
 import com.mcledger.dtos.EventRequest;
 import com.mcledger.dtos.EventResult;
 import com.mcledger.dtos.EventType;
+import com.mcledger.models.AuthEvent;
 import com.mcledger.models.AuthEventType;
 import com.mcledger.models.EntryType;
 import com.mcledger.models.LedgerEntry;
@@ -356,5 +357,78 @@ class DayCloseServiceTest {
         service.closeDay(ACC, day(12));
 
         assertEquals("INTEREST:%s:%s:%s".formatted(ACC, day(7), day(12)), interestCredits(ACC).get(0).requestId());
+    }
+
+    private AuthEvent authorize(String id, String amount, int day) {
+        return assertInstanceOf(EventResult.Authorized.class, handle(id, EventType.AUTHORIZATION, amount, day, day)).authEvent();
+    }
+
+    private List<AuthEvent> expired() {
+        return container.authEventRepository().findByAccountId(ACC).stream()
+                .filter(it -> it.type() == AuthEventType.EXPIRED).toList();
+    }
+
+    @Test
+    void holdExpiresAtTheCloseOfItsExpiryDay() {
+        handle("E1", EventType.CREDIT, "250.00", 1, 1);
+        final var hold = authorize("A1", "200.00", 2);
+
+        service.closeDay(ACC, day(8));
+        assertTrue(expired().isEmpty());
+
+        final var result = service.closeDay(ACC, day(9));
+
+        assertEquals(1, expired().size());
+        assertEquals(hold.authId(), expired().get(0).authId());
+        assertEquals(day(9), expired().get(0).bookedDay());
+        // reported as that day's authorization state change
+        assertEquals(AuthEventType.EXPIRED, result.authorizationStates().get(0).type());
+    }
+
+    @Test
+    void expiredHoldIsReleasedFromTheAvailableBalance() {
+        handle("E1", EventType.CREDIT, "250.00", 1, 1);
+        authorize("A1", "200.00", 2);
+        assertEquals(AuthEventType.DECLINED, authorize("A2", "100.00", 3).type());
+
+        service.closeDay(ACC, day(9));
+
+        assertEquals(AuthEventType.APPROVED, authorize("A3", "100.00", 10).type());
+    }
+
+    @Test
+    void closingTheExpiryDayAgainExpiresOnce() {
+        handle("E1", EventType.CREDIT, "250.00", 1, 1);
+        authorize("A1", "200.00", 2);
+
+        service.closeDay(ACC, day(9));
+        service.closeDay(ACC, day(10));
+
+        assertEquals(1, expired().size());
+    }
+
+    @Test
+    void settledAndDeclinedHoldsDoNotExpire() {
+        handle("E1", EventType.CREDIT, "250.00", 1, 1);
+        final var settled = authorize("A1", "200.00", 2);
+        ledgerService.handleEvent(eventRequest().requestId("S1").eventType(EventType.SETTLEMENT).accountId(ACC)
+                .authId(settled.id()).amount(Money.of(AED, "185.00")).bookedDay(day(4)).valueDate(day(4)).build());
+        authorize("A2", "500.00", 2);
+
+        service.closeDay(ACC, day(9));
+
+        assertTrue(expired().isEmpty());
+    }
+
+    @Test
+    void settlementAfterExpiryIsStillAccepted() {
+        handle("E1", EventType.CREDIT, "250.00", 1, 1);
+        final var hold = authorize("A1", "200.00", 2);
+        service.closeDay(ACC, day(9));
+
+        final var settlement = ledgerService.handleEvent(eventRequest().requestId("S1").eventType(EventType.SETTLEMENT)
+                .accountId(ACC).authId(hold.id()).amount(Money.of(AED, "185.00")).bookedDay(day(10)).valueDate(day(10)).build());
+
+        assertEquals(Money.of(AED, "-185.00"), posted(settlement).amount());
     }
 }

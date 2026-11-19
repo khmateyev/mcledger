@@ -32,7 +32,7 @@ class SettlementEventHandlerTest {
     private final AuthEventRepository authEventRepository = new AuthEventRepositoryInMemory();
     private final RejectedEventRepository rejectedEventRepository = new RejectedEventRepositoryInMemory();
     private final PostEntryEventHandler credit = new PostEntryEventHandler(ledgerEntryRepository, EntryType.CREDIT, false);
-    private final AuthorizationEventHandler authorize = new AuthorizationEventHandler(ledgerEntryRepository, authEventRepository);
+    private final AuthorizationEventHandler authorize = new AuthorizationEventHandler(ledgerEntryRepository, authEventRepository, HandlerFixtures.CONFIG);
     private final SettlementEventHandler handler =
             new SettlementEventHandler(ledgerEntryRepository, authEventRepository, rejectedEventRepository);
 

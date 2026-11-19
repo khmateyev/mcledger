@@ -2,6 +2,8 @@ package com.mcledger.services;
 
 import com.mcledger.config.ConfigService;
 import com.mcledger.dtos.DayCloseResult;
+import com.mcledger.models.AuthEvent;
+import com.mcledger.models.AuthEventType;
 import com.mcledger.models.EntryType;
 import com.mcledger.models.LedgerEntry;
 import com.mcledger.money.Money;
@@ -18,8 +20,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import static com.mcledger.dtos.DayCloseResult.dayCloseResult;
+import static com.mcledger.models.AuthEvent.authEvent;
 import static com.mcledger.models.LedgerEntry.ledgerEntry;
 import static java.util.UUID.randomUUID;
 
@@ -52,6 +56,7 @@ public final class DayCloseService {
         final var account = accountRepository.getById(accountId);
         final var currency = account.currency();
 
+        expireHolds(accountId, day);
         refundFeesThatNoLongerApply(accountId, currency, day);
         assessFee(accountId, currency, day);
         interestPeriodStart(account.openedOn(), day)
@@ -118,6 +123,30 @@ public final class DayCloseService {
                 .bookedDay(endDate)
                 .build()
         );
+    }
+
+    /** Releases every active hold whose expiry day has come; a later settlement is still accepted. */
+    private void expireHolds(UUID accountId, LocalDate day) {
+        final var authEvents = authEventRepository.findByAccountId(accountId);
+        final var releasedAuthIds = authEvents.stream()
+            .filter(it -> it.type() == AuthEventType.SETTLED || it.type() == AuthEventType.EXPIRED)
+            .map(AuthEvent::authId)
+            .collect(Collectors.toSet());
+
+        authEvents.stream()
+            .filter(it -> it.type() == AuthEventType.APPROVED && !releasedAuthIds.contains(it.authId()))
+            .filter(it -> it.expiresOn().map(expiresOn -> !expiresOn.isAfter(day)).orElse(false))
+            .forEach(hold -> authEventRepository.create(
+                authEvent()
+                    .id(randomUUID())
+                    .requestId("EXPIRED:" + hold.authId())
+                    .authId(hold.authId())
+                    .accountId(accountId)
+                    .type(AuthEventType.EXPIRED)
+                    .amount(hold.amount())
+                    .bookedDay(day)
+                    .build()
+            ));
     }
 
     private void refundFeesThatNoLongerApply(UUID accountId, CurrencyCode currency, LocalDate day) {

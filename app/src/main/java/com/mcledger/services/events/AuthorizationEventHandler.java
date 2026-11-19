@@ -1,5 +1,6 @@
 package com.mcledger.services.events;
 
+import com.mcledger.config.ConfigService;
 import com.mcledger.dtos.EventRequest;
 import com.mcledger.dtos.EventResult;
 import com.mcledger.models.AuthEvent;
@@ -16,18 +17,22 @@ import static com.mcledger.models.AuthEvent.authEvent;
 import static java.util.UUID.randomUUID;
 
 /**
- * Approves a hold only if ledger balance - active holds - hold stays >= 0.
+ * Approves a hold only if ledger balance - active holds - hold stays >= 0. An approved hold expires
+ * {@code holdExpiryDays} after approval; settled and expired holds are no longer active.
  * Holds live outside the ledger: they change the available balance, never the ledger balance.
  */
 class AuthorizationEventHandler implements EventHandler {
 
     private final LedgerEntryRepository ledgerEntryRepository;
     private final AuthEventRepository authEventRepository;
+    private final ConfigService configService;
 
     AuthorizationEventHandler(LedgerEntryRepository ledgerEntryRepository,
-                              AuthEventRepository authEventRepository) {
+                              AuthEventRepository authEventRepository,
+                              ConfigService configService) {
         this.ledgerEntryRepository = ledgerEntryRepository;
         this.authEventRepository = authEventRepository;
+        this.configService = configService;
     }
 
     @Override
@@ -52,6 +57,7 @@ class AuthorizationEventHandler implements EventHandler {
                 .type(approved ? AuthEventType.APPROVED : AuthEventType.DECLINED)
                 .amount(holdAmount)
                 .bookedDay(request.getBookedDay())
+                .expiresOn(approved ? request.getBookedDay().plusDays(configService.holdExpiryDays()) : null)
                 .build()
         );
 
@@ -66,13 +72,13 @@ class AuthorizationEventHandler implements EventHandler {
 
     private Money activeHolds(UUID accountId, Money currencyOf) {
         final var authEvents = authEventRepository.findByAccountId(accountId);
-        final var settledAuthIds = authEvents.stream()
-            .filter(it -> it.type() == AuthEventType.SETTLED)
+        final var releasedAuthIds = authEvents.stream()
+            .filter(it -> it.type() == AuthEventType.SETTLED || it.type() == AuthEventType.EXPIRED)
             .map(AuthEvent::authId)
             .collect(Collectors.toSet());
 
         return authEvents.stream()
-            .filter(it -> it.type() == AuthEventType.APPROVED && !settledAuthIds.contains(it.authId()))
+            .filter(it -> it.type() == AuthEventType.APPROVED && !releasedAuthIds.contains(it.authId()))
             .map(AuthEvent::amount)
             .reduce(Money.zero(currencyOf.currency()), Money::plus);
     }

@@ -28,7 +28,7 @@ public final class LedgerService {
         this.rejectedEventRepository = rejectedEventRepository;
         this.configService = configService;
         this.eventHandlerFactory =
-            new EventHandlerFactory(ledgerEntryRepository, authEventRepository, rejectedEventRepository);
+            new EventHandlerFactory(ledgerEntryRepository, authEventRepository, rejectedEventRepository, configService);
     }
 
     public EventResult handleEvent(EventRequest request) {

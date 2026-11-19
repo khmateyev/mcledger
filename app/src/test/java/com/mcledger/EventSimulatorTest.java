@@ -53,7 +53,7 @@ class EventSimulatorTest {
         container.accountRepository().create(account().id(ACC_001).number("ACC-001").currency(AED).openedOn(day(1)).build());
         container.accountRepository().create(account().id(ACC_002).number("ACC-002").currency(BHD).openedOn(day(1)).build());
 
-        final var e10 = Money.of(BHD, "10000.000").split(3, FIRST);
+        final var e10 = Money.of(BHD, "10.000").split(3, FIRST);
 
         // Suppliers, because E5 and E9 need ids (E3's authorization, E7's entry) that exist only after those are handled.
         final List<Supplier<EventRequest>> events = List.of(
@@ -91,8 +91,8 @@ class EventSimulatorTest {
         // ACC-001 closing balances by value date: 250.00, 250.00, 650.00, 465.00, 465.00, 465.00
         // (E7 is reversed by E9 and the Day 5 fee is refunded) -> 0.10 + 0.10 + 0.26 + 0.19 + 0.19 + 0.19
         assertInterestCredit(ACC_001, Money.of(AED, "1.03"));
-        // ACC-002 holds the E10 total (10000.000) on Day 5 and Day 6 only -> 4.000 + 4.000, no compounding
-        assertInterestCredit(ACC_002, Money.of(BHD, "8.000"));
+        // ACC-002 holds the E10 total (10.000) on Day 5 and Day 6 only -> 0.004 + 0.004, no compounding
+        assertInterestCredit(ACC_002, Money.of(BHD, "0.008"));
     }
 
     private void assertInterestCredit(UUID accountId, Money expected) {

@@ -1,5 +1,6 @@
 package com.mcledger.services.events;
 
+import com.mcledger.config.ConfigService;
 import com.mcledger.dtos.EventType;
 import com.mcledger.models.EntryType;
 import com.mcledger.repositories.AuthEventRepository;
@@ -14,11 +15,12 @@ public class EventHandlerFactory {
 
     public EventHandlerFactory(LedgerEntryRepository ledgerEntryRepository,
                                AuthEventRepository authEventRepository,
-                               RejectedEventRepository rejectedEventRepository) {
+                               RejectedEventRepository rejectedEventRepository,
+                               ConfigService configService) {
         this.handlers = Map.of(
             EventType.CREDIT, new PostEntryEventHandler(ledgerEntryRepository, EntryType.CREDIT, false),
             EventType.DEBIT, new PostEntryEventHandler(ledgerEntryRepository, EntryType.DEBIT, true),
-            EventType.AUTHORIZATION, new AuthorizationEventHandler(ledgerEntryRepository, authEventRepository),
+            EventType.AUTHORIZATION, new AuthorizationEventHandler(ledgerEntryRepository, authEventRepository, configService),
             EventType.SETTLEMENT,
             new SettlementEventHandler(ledgerEntryRepository, authEventRepository, rejectedEventRepository),
             EventType.REVERSAL, new ReversalEventHandler(ledgerEntryRepository, rejectedEventRepository)

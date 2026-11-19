@@ -1,5 +1,6 @@
 package com.mcledger.services.events;
 
+import com.mcledger.config.ConfigService;
 import com.mcledger.dtos.EventRequest;
 import com.mcledger.dtos.EventResult;
 import com.mcledger.dtos.EventType;
@@ -9,17 +10,31 @@ import com.mcledger.models.RejectedEvent;
 import com.mcledger.models.RejectionReason;
 import com.mcledger.money.Money;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import static com.mcledger.config.FixedConfigService.fixedConfigService;
 import static com.mcledger.dtos.EventRequest.eventRequest;
 import static com.mcledger.money.CurrencyCode.AED;
+import static com.mcledger.money.CurrencyCode.BHD;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 final class HandlerFixtures {
 
     static final UUID ACC = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+    static final ConfigService CONFIG = fixedConfigService()
+            .overdraftFee(Money.of(AED, "25.00"))
+            .dailyInterestRate(AED, new BigDecimal("0.0004"))
+            .dailyInterestRate(BHD, new BigDecimal("0.0004"))
+            .holdExpiryDays(7)
+            .maxBackValueDays(5)
+            .roundingMode(RoundingMode.HALF_UP)
+            .interestPeriodDays(6)
+            .build();
 
     private HandlerFixtures() {
     }

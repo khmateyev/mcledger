@@ -42,7 +42,8 @@ Java 21 (Gradle toolchain). JUnit 5 (Jupiter).
   - REVERSAL: the reversed ledger entry id (an entry is reversed at most once);
   - SETTLEMENT: the authorization id (an authorization is settled at most once);
   - fee: `FEE:<accountId>:<day>`; fee refund: the fee entry id;
-  - interest credit: `INTEREST:<accountId>:<start>:<end>`.
+  - interest credit: `INTEREST:<accountId>:<start>:<end>`;
+  - hold expiry: `EXPIRED:<authId>`.
 - **No hidden rounding.** `Money` is always at its currency's precision (AED 2, BHD 3).
   `Money.of` rejects extra decimals; only `Money.rounded` and `Money.multiply` round, with an explicit
   mode. Never use `double`/`float` for amounts.
@@ -55,7 +56,9 @@ Java 21 (Gradle toolchain). JUnit 5 (Jupiter).
   ≤ day), never retroactively. An earlier fee is refunded once its day, without the fee itself,
   is no longer negative.
 - **Holds live outside the ledger.** They change the available balance, never the ledger balance.
-  A settlement may not exceed its authorization and releases the whole hold.
+  A settlement may not exceed its authorization and releases the whole hold. An approved hold stores
+  `expiresOn` (approval day + `holdExpiryDays`) and is released by an EXPIRED event at that day's
+  close; a settlement arriving after expiry is still accepted.
 - **No cross-currency arithmetic.** `Money` throws on mismatch; an event in another currency than
   its account is rejected.
 - **Every tunable value comes from `ConfigService`** (overdraft fee, daily interest rate, hold expiry

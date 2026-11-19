@@ -3,6 +3,7 @@ package com.mcledger.models;
 import com.mcledger.money.Money;
 
 import java.time.LocalDate;
+import java.util.Optional;
 import java.util.UUID;
 
 import static java.util.Objects.requireNonNull;
@@ -16,6 +17,7 @@ public final class AuthEvent {
     private final AuthEventType type;
     private final Money amount;
     private final LocalDate bookedDay;
+    private final LocalDate expiresOn;
 
     private AuthEvent(Builder builder) {
         this.id = requireNonNull(builder.id, "id");
@@ -25,6 +27,7 @@ public final class AuthEvent {
         this.type = requireNonNull(builder.type, "type");
         this.amount = requireNonNull(builder.amount, "amount");
         this.bookedDay = requireNonNull(builder.bookedDay, "bookedDay");
+        this.expiresOn = builder.expiresOn;
     }
 
     public UUID id() {
@@ -56,6 +59,11 @@ public final class AuthEvent {
         return bookedDay;
     }
 
+    /** Set on APPROVED only: the hold counts until this day's close and is released by it. */
+    public Optional<LocalDate> expiresOn() {
+        return Optional.ofNullable(expiresOn);
+    }
+
     public static Builder authEvent() {
         return new Builder();
     }
@@ -74,6 +82,7 @@ public final class AuthEvent {
         private AuthEventType type;
         private Money amount;
         private LocalDate bookedDay;
+        private LocalDate expiresOn;
 
         private Builder() {
         }
@@ -110,6 +119,11 @@ public final class AuthEvent {
 
         public Builder bookedDay(LocalDate bookedDay) {
             this.bookedDay = bookedDay;
+            return this;
+        }
+
+        public Builder expiresOn(LocalDate expiresOn) {
+            this.expiresOn = expiresOn;
             return this;
         }
 

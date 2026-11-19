@@ -3,5 +3,6 @@ package com.mcledger.models;
 public enum AuthEventType {
     APPROVED,
     DECLINED,
-    SETTLED
+    SETTLED,
+    EXPIRED
 }
