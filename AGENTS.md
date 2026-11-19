@@ -27,8 +27,9 @@ Keep it simple: add a method, field or check only when something uses it.
 ## Commands
 
 ```sh
-./gradlew :app:test     # run all tests, including the event replay
-./gradlew :app:build    # compile and test
+./gradlew :app:test         # run all tests, including the event replay
+./gradlew :app:build        # compile and test
+./gradlew :app:failingTest  # run the tests that fail on purpose (FailingByDesignTest)
 ```
 
 Java 21 (Gradle toolchain). JUnit 5 (Jupiter).
@@ -84,3 +85,5 @@ Java 21 (Gradle toolchain). JUnit 5 (Jupiter).
 - Do not commit unless asked.
 - Keep the task's docs current when behavior changes: `README.md`, `AMBIGUITIES.md`, `NUMBERS.md`,
   `REJECTED.md`, `WORKLOG.md` (real timestamps, written by the human).
+- `FailingByDesignTest` fails on purpose: it shows limits of the design and is tagged
+  `failing-by-design`, so `test` skips it. Do not "fix" it by changing its expected values.

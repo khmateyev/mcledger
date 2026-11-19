@@ -39,3 +39,6 @@ write ambiguities and numbers
 
 ## 2026-11-20 01:28
 write rejected.md
+
+## 2026-11-20 01:50
+add failing test
