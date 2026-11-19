@@ -11,7 +11,7 @@ public final class AuthEvent {
 
     private final UUID id;
     private final String requestId;
-    private final String authRequestId;
+    private final UUID authId;
     private final UUID accountId;
     private final AuthEventType type;
     private final Money amount;
@@ -20,7 +20,7 @@ public final class AuthEvent {
     private AuthEvent(Builder builder) {
         this.id = requireNonNull(builder.id, "id");
         this.requestId = requireNonNull(builder.requestId, "requestId");
-        this.authRequestId = requireNonNull(builder.authRequestId, "authRequestId");
+        this.authId = requireNonNull(builder.authId, "authId");
         this.accountId = requireNonNull(builder.accountId, "accountId");
         this.type = requireNonNull(builder.type, "type");
         this.amount = requireNonNull(builder.amount, "amount");
@@ -35,8 +35,9 @@ public final class AuthEvent {
         return requestId;
     }
 
-    public String authRequestId() {
-        return authRequestId;
+    /** The approved authorization this event belongs to; its own id for APPROVED and DECLINED. */
+    public UUID authId() {
+        return authId;
     }
 
     public UUID accountId() {
@@ -61,14 +62,14 @@ public final class AuthEvent {
 
     @Override
     public String toString() {
-        return "AuthEvent[%s auth=%s %s %s %s %s]".formatted(requestId, authRequestId, accountId, type, amount, bookedDay);
+        return "AuthEvent[%s auth=%s %s %s %s %s]".formatted(requestId, authId, accountId, type, amount, bookedDay);
     }
 
     public static final class Builder {
 
         private UUID id;
         private String requestId;
-        private String authRequestId;
+        private UUID authId;
         private UUID accountId;
         private AuthEventType type;
         private Money amount;
@@ -87,8 +88,8 @@ public final class AuthEvent {
             return this;
         }
 
-        public Builder authRequestId(String authRequestId) {
-            this.authRequestId = authRequestId;
+        public Builder authId(UUID authId) {
+            this.authId = authId;
             return this;
         }
 

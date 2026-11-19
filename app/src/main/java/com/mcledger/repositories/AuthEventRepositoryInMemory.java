@@ -15,6 +15,7 @@ public class AuthEventRepositoryInMemory implements AuthEventRepository {
 
     private final List<AuthEvent> db = new CopyOnWriteArrayList<>();
     private final Map<String, AuthEvent> byRequestId = new ConcurrentHashMap<>();
+    private final Map<UUID, AuthEvent> byId = new ConcurrentHashMap<>();
 
     @Override
     public Optional<AuthEvent> findByRequestId(String requestId) {
@@ -27,8 +28,8 @@ public class AuthEventRepositoryInMemory implements AuthEventRepository {
     }
 
     @Override
-    public List<AuthEvent> findByAuthRequestId(String authRequestId) {
-        return db.stream().filter(it -> it.authRequestId().equals(authRequestId)).toList();
+    public Optional<AuthEvent> findById(UUID id) {
+        return ofNullable(byId.get(id));
     }
 
     @Override
@@ -37,6 +38,7 @@ public class AuthEventRepositoryInMemory implements AuthEventRepository {
         if (previous != null) {
             return previous;
         }
+        byId.put(event.id(), event);
         db.add(event);
         return event;
     }

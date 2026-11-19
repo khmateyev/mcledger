@@ -42,11 +42,12 @@ class AuthorizationEventHandler implements EventHandler {
             .minus(activeHolds(request.getAccountId(), holdAmount));
         final var approved = !available.minus(holdAmount).isNegative();
 
+        final var id = randomUUID();
         final var created = authEventRepository.create(
             authEvent()
-                .id(randomUUID())
+                .id(id)
                 .requestId(request.getRequestId())
-                .authRequestId(request.getRequestId())
+                .authId(id)
                 .accountId(request.getAccountId())
                 .type(approved ? AuthEventType.APPROVED : AuthEventType.DECLINED)
                 .amount(holdAmount)
@@ -65,13 +66,13 @@ class AuthorizationEventHandler implements EventHandler {
 
     private Money activeHolds(UUID accountId, Money currencyOf) {
         final var authEvents = authEventRepository.findByAccountId(accountId);
-        final var settledAuthRequestIds = authEvents.stream()
+        final var settledAuthIds = authEvents.stream()
             .filter(it -> it.type() == AuthEventType.SETTLED)
-            .map(AuthEvent::authRequestId)
+            .map(AuthEvent::authId)
             .collect(Collectors.toSet());
 
         return authEvents.stream()
-            .filter(it -> it.type() == AuthEventType.APPROVED && !settledAuthRequestIds.contains(it.authRequestId()))
+            .filter(it -> it.type() == AuthEventType.APPROVED && !settledAuthIds.contains(it.authId()))
             .map(AuthEvent::amount)
             .reduce(Money.zero(currencyOf.currency()), Money::plus);
     }

@@ -17,8 +17,8 @@ public class EventRequest {
     private final LocalDate valueDate;
     private final LocalDate bookedDay;
     private final Optional<Money> amount;
-    private final Optional<String> reversesRequestId;
-    private final Optional<String> authRequestId;
+    private final Optional<UUID> reversesEntryId;
+    private final Optional<UUID> authId;
 
     private EventRequest(Builder builder) {
         this.requestId = requireNonNull(builder.requestId, "requestId");
@@ -27,26 +27,26 @@ public class EventRequest {
         this.valueDate = requireNonNull(builder.valueDate, "valueDate");
         this.bookedDay = requireNonNull(builder.bookedDay, "bookedDay");
         this.amount = builder.amount;
-        this.reversesRequestId = builder.reversesRequestId;
-        this.authRequestId = builder.authRequestId;
+        this.reversesEntryId = builder.reversesEntryId;
+        this.authId = builder.authId;
 
         validate();
     }
 
     private void validate() {
-        if ((eventType == EventType.SETTLEMENT) != authRequestId.isPresent()) {
-            throw new IllegalArgumentException("authRequestId has to be present for SETTLEMENT only");
+        if ((eventType == EventType.SETTLEMENT) != authId.isPresent()) {
+            throw new IllegalArgumentException("authId has to be present for SETTLEMENT only");
         }
         if (eventType == EventType.REVERSAL) {
-            if (reversesRequestId.isEmpty()) {
-                throw new IllegalArgumentException("reversesRequestId has to be present for REVERSAL");
+            if (reversesEntryId.isEmpty()) {
+                throw new IllegalArgumentException("reversesEntryId has to be present for REVERSAL");
             }
             if (amount.isPresent()) {
                 throw new IllegalArgumentException("REVERSAL takes its amount from the reversed entry");
             }
         } else {
-            if (reversesRequestId.isPresent()) {
-                throw new IllegalArgumentException("only REVERSAL may reference another request");
+            if (reversesEntryId.isPresent()) {
+                throw new IllegalArgumentException("only REVERSAL may reference a ledger entry");
             }
             if (amount.isEmpty() || !amount.get().isPositive()) {
                 throw new IllegalArgumentException("positive amount has to be present for " + eventType);
@@ -87,22 +87,22 @@ public class EventRequest {
                 .orElseThrow(() -> new IllegalStateException("amount is required for " + eventType));
     }
 
-    public Optional<String> getReversesRequestId() {
-        return reversesRequestId;
+    public Optional<UUID> getReversesEntryId() {
+        return reversesEntryId;
     }
 
-    public String requiredReversesRequestId() {
-        return getReversesRequestId()
-                .orElseThrow(() -> new IllegalStateException("reversesRequestId is required for REVERSAL"));
+    public UUID requiredReversesEntryId() {
+        return getReversesEntryId()
+                .orElseThrow(() -> new IllegalStateException("reversesEntryId is required for REVERSAL"));
     }
 
-    public Optional<String> getAuthRequestId() {
-        return authRequestId;
+    public Optional<UUID> getAuthId() {
+        return authId;
     }
 
-    public String requiredAuthRequestId() {
-        return getAuthRequestId()
-                .orElseThrow(() -> new IllegalStateException("authRequestId is required for SETTLEMENT"));
+    public UUID requiredAuthId() {
+        return getAuthId()
+                .orElseThrow(() -> new IllegalStateException("authId is required for SETTLEMENT"));
     }
 
     public static final class Builder {
@@ -113,8 +113,8 @@ public class EventRequest {
         private LocalDate valueDate;
         private LocalDate bookedDay;
         private Optional<Money> amount = Optional.empty();
-        private Optional<String> reversesRequestId = Optional.empty();
-        private Optional<String> authRequestId = Optional.empty();
+        private Optional<UUID> reversesEntryId = Optional.empty();
+        private Optional<UUID> authId = Optional.empty();
 
         private Builder() {
         }
@@ -153,17 +153,17 @@ public class EventRequest {
             return amount(ofNullable(amount));
         }
 
-        public Builder reversesRequestId(Optional<String> reversesRequestId) {
-            this.reversesRequestId = reversesRequestId;
+        public Builder reversesEntryId(Optional<UUID> reversesEntryId) {
+            this.reversesEntryId = reversesEntryId;
             return this;
         }
 
-        public Builder reversesRequestId(String reversesRequestId) {
-            return reversesRequestId(ofNullable(reversesRequestId));
+        public Builder reversesEntryId(UUID reversesEntryId) {
+            return reversesEntryId(ofNullable(reversesEntryId));
         }
 
-        public Builder authRequestId(String authRequestId) {
-            this.authRequestId = ofNullable(authRequestId);
+        public Builder authId(UUID authId) {
+            this.authId = ofNullable(authId);
             return this;
         }
 

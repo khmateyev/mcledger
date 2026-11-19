@@ -11,6 +11,10 @@ import static com.mcledger.models.LedgerEntry.ledgerEntry;
 import static com.mcledger.models.RejectedEvent.rejectedEvent;
 import static java.util.UUID.randomUUID;
 
+/**
+ * The reversed ledger entry id is the idempotency key of the reversal entry, so an entry can be
+ * reversed only once: any further reversal of it returns the existing reversal.
+ */
 class ReversalEventHandler implements EventHandler {
 
     private final LedgerEntryRepository ledgerEntryRepository;
@@ -24,48 +28,41 @@ class ReversalEventHandler implements EventHandler {
 
     @Override
     public EventResult handle(EventRequest request) {
-        final var existing = ledgerEntryRepository.findByRequestId(request.getRequestId());
+        final var originalEntryId = request.requiredReversesEntryId();
+        final var idempotencyKey = originalEntryId.toString();
+
+        final var existing = ledgerEntryRepository.findByRequestId(idempotencyKey);
         if (existing.isPresent()) {
             return new EventResult.Posted(existing.get());
         }
 
-        final var originalRequestId = request.requiredReversesRequestId();
-        final var original = ledgerEntryRepository.findByRequestId(originalRequestId)
+        final var original = ledgerEntryRepository.findById(originalEntryId)
             .filter(it -> it.accountId().equals(request.getAccountId()));
         if (original.isEmpty()) {
-            return reject(request, RejectionReason.ENTRY_NOT_FOUND,
-                "no entry for request %s on account %s".formatted(originalRequestId, request.getAccountId()));
-        }
-        if (ledgerEntryRepository.findReversalOf(original.get().id()).isPresent()) {
-            return reject(request, RejectionReason.ALREADY_REVERSED,
-                "request %s is already reversed".formatted(originalRequestId));
+            return new EventResult.Rejected(rejectedEventRepository.create(
+                rejectedEvent()
+                    .requestId(request.getRequestId())
+                    .accountId(request.getAccountId())
+                    .bookedDay(request.getBookedDay())
+                    .reason(RejectionReason.ENTRY_NOT_FOUND)
+                    .message("no entry %s on account %s".formatted(originalEntryId, request.getAccountId()))
+                    .build()
+            ));
         }
 
         final var created = ledgerEntryRepository.create(
             ledgerEntry()
                 .id(randomUUID())
-                .requestId(request.getRequestId())
+                .requestId(idempotencyKey)
                 .accountId(request.getAccountId())
                 .type(EntryType.REVERSAL)
                 .amount(original.get().amount().negate())
                 .valueDate(original.get().valueDate())
                 .bookedDay(request.getBookedDay())
-                .reversesEntryId(original.get().id())
+                .reversesEntryId(originalEntryId)
                 .build()
         );
 
         return new EventResult.Posted(created);
-    }
-
-    private EventResult reject(EventRequest request, RejectionReason reason, String message) {
-        return new EventResult.Rejected(rejectedEventRepository.create(
-            rejectedEvent()
-                .requestId(request.getRequestId())
-                .accountId(request.getAccountId())
-                .bookedDay(request.getBookedDay())
-                .reason(reason)
-                .message(message)
-                .build()
-        ));
     }
 }

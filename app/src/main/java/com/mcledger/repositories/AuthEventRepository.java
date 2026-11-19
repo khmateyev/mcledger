@@ -9,6 +9,6 @@ import java.util.UUID;
 public interface AuthEventRepository {
     Optional<AuthEvent> findByRequestId(String requestId);
     List<AuthEvent> findByAccountId(UUID accountId);
-    List<AuthEvent> findByAuthRequestId(String authRequestId);
+    Optional<AuthEvent> findById(UUID id);
     AuthEvent create(AuthEvent event);
 }

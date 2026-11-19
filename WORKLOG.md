@@ -20,3 +20,7 @@ implement AuthorizationEventHandler
 
 ## 2026-11-19 20:23
 implement SettlementEventHandler
+
+## 2026-11-19 20:40
+use original entryId as idempotency key for reversal and settlement 
+add unit tests 

@@ -126,18 +126,18 @@ class LedgerServiceTest {
         assertEquals(1, authEventRepository.findByAccountId(ACC).size());
     }
 
-    private static EventRequest settlement(String id, String authRequestId, String amount, int day) {
+    private static EventRequest settlement(String id, UUID authId, String amount, int day) {
         return eventRequest().requestId(id).eventType(EventType.SETTLEMENT).accountId(ACC)
-                .authRequestId(authRequestId).amount(Money.of(AED, amount)).bookedDay(day(day)).valueDate(day(day)).build();
+                .authId(authId).amount(Money.of(AED, amount)).bookedDay(day(day)).valueDate(day(day)).build();
     }
 
     @Test
     void e5SettlesAuthABelowTheHoldAndReleasesIt() {
         service.handleEvent(event("E1", EventType.CREDIT, "1200.00", 1, 1));
         service.handleEvent(event("E2", EventType.DEBIT, "950.00", 1, 1));
-        service.handleEvent(event("E3", EventType.AUTHORIZATION, "200.00", 2, 2));
+        final var e3 = authorized(service.handleEvent(event("E3", EventType.AUTHORIZATION, "200.00", 2, 2)));
 
-        final var e5 = posted(service.handleEvent(settlement("E5", "E3", "185.00", 4)));
+        final var e5 = posted(service.handleEvent(settlement("E5", e3.id(), "185.00", 4)));
 
         assertEquals(Money.of(AED, "-185.00"), e5.amount());
         assertEquals(Money.of(AED, "65.00"), balanceAsOf(4));
@@ -150,37 +150,35 @@ class LedgerServiceTest {
     void e6SettlementWithoutAuthorizationIsRejectedAndMovesNoMoney() {
         service.handleEvent(event("E1", EventType.CREDIT, "1200.00", 1, 1));
 
-        rejected(service.handleEvent(settlement("E6", "Auth-Z", "180.00", 4)), RejectionReason.AUTHORIZATION_NOT_FOUND);
+        rejected(service.handleEvent(settlement("E6", UUID.randomUUID(), "180.00", 4)), RejectionReason.AUTHORIZATION_NOT_FOUND);
         assertEquals(Money.of(AED, "1200.00"), balanceAsOf(4));
     }
 
     @Test
     void settlementAboveTheAuthorizedAmountIsRejected() {
         service.handleEvent(event("E1", EventType.CREDIT, "1200.00", 1, 1));
-        service.handleEvent(event("A1", EventType.AUTHORIZATION, "200.00", 2, 2));
+        final var a1 = authorized(service.handleEvent(event("A1", EventType.AUTHORIZATION, "200.00", 2, 2)));
 
-        rejected(service.handleEvent(settlement("S1", "A1", "200.01", 4)), RejectionReason.SETTLEMENT_ABOVE_AUTHORIZED);
-        posted(service.handleEvent(settlement("S2", "A1", "200.00", 4)));
+        rejected(service.handleEvent(settlement("S1", a1.id(), "200.01", 4)), RejectionReason.SETTLEMENT_ABOVE_AUTHORIZED);
+        posted(service.handleEvent(settlement("S2", a1.id(), "200.00", 4)));
     }
 
     @Test
-    void declinedOrAlreadySettledAuthorizationCannotBeSettled() {
+    void declinedAuthorizationCannotBeSettled() {
         service.handleEvent(event("E1", EventType.CREDIT, "100.00", 1, 1));
-        service.handleEvent(event("A1", EventType.AUTHORIZATION, "500.00", 2, 2));
-        rejected(service.handleEvent(settlement("S1", "A1", "50.00", 4)), RejectionReason.AUTHORIZATION_NOT_APPROVED);
+        final var a1 = authorized(service.handleEvent(event("A1", EventType.AUTHORIZATION, "500.00", 2, 2)));
 
-        service.handleEvent(event("A2", EventType.AUTHORIZATION, "50.00", 2, 2));
-        posted(service.handleEvent(settlement("S2", "A2", "50.00", 4)));
-        rejected(service.handleEvent(settlement("S3", "A2", "50.00", 4)), RejectionReason.AUTHORIZATION_ALREADY_SETTLED);
+        rejected(service.handleEvent(settlement("S1", a1.id(), "50.00", 4)), RejectionReason.AUTHORIZATION_NOT_APPROVED);
     }
 
     @Test
-    void sameSettlementTwiceIsPostedOnce() {
+    void anAuthorizationIsSettledOnlyOnceWhateverTheRequest() {
         service.handleEvent(event("E1", EventType.CREDIT, "1200.00", 1, 1));
-        service.handleEvent(event("A1", EventType.AUTHORIZATION, "200.00", 2, 2));
-        final var first = posted(service.handleEvent(settlement("S1", "A1", "185.00", 4)));
+        final var a1 = authorized(service.handleEvent(event("A1", EventType.AUTHORIZATION, "200.00", 2, 2)));
+        final var first = posted(service.handleEvent(settlement("S1", a1.id(), "185.00", 4)));
 
-        assertSame(first, posted(service.handleEvent(settlement("S1", "A1", "185.00", 4))));
+        assertSame(first, posted(service.handleEvent(settlement("S1", a1.id(), "185.00", 4))));
+        assertSame(first, posted(service.handleEvent(settlement("S2", a1.id(), "50.00", 4))));
         assertEquals(Money.of(AED, "1015.00"), balanceAsOf(4));
     }
 
@@ -193,9 +191,9 @@ class LedgerServiceTest {
                 .amount(Money.of(AED, amount)).bookedDay(day(booked)).valueDate(day(value)).build();
     }
 
-    private static EventRequest reversal(String id, String reversesId, int booked) {
+    private static EventRequest reversal(String id, UUID entryId, int booked) {
         return eventRequest().requestId(id).eventType(EventType.REVERSAL).accountId(ACC)
-                .reversesRequestId(reversesId).bookedDay(day(booked)).valueDate(day(booked)).build();
+                .reversesEntryId(entryId).bookedDay(day(booked)).valueDate(day(booked)).build();
     }
 
     private static LedgerEntry posted(EventResult result) {
@@ -242,9 +240,10 @@ class LedgerServiceTest {
         service.handleEvent(event("E2", EventType.DEBIT, "950.00", 1, 1));
         final var e7 = posted(service.handleEvent(event("E7", EventType.DEBIT, "620.00", 5, 2)));
 
-        final var e9 = posted(service.handleEvent(reversal("E9", "E7", 6)));
+        final var e9 = posted(service.handleEvent(reversal("E9", e7.id(), 6)));
 
         assertEquals(Money.of(AED, "620.00"), e9.amount());
+        assertEquals(e7.id().toString(), e9.requestId());
         assertEquals(day(2), e9.valueDate());
         assertEquals(day(6), e9.bookedDay());
         assertEquals(e7.id(), e9.reversesEntryId().orElseThrow());
@@ -252,25 +251,18 @@ class LedgerServiceTest {
     }
 
     @Test
-    void sameReversalTwiceIsPostedOnce() {
-        service.handleEvent(event("E7", EventType.DEBIT, "620.00", 5, 2));
-        final var e9 = posted(service.handleEvent(reversal("E9", "E7", 6)));
+    void anEntryIsReversedOnlyOnceWhateverTheRequest() {
+        final var e7 = posted(service.handleEvent(event("E7", EventType.DEBIT, "620.00", 5, 2)));
+        final var e9 = posted(service.handleEvent(reversal("E9", e7.id(), 6)));
 
-        assertSame(e9, posted(service.handleEvent(reversal("E9", "E7", 6))));
+        assertSame(e9, posted(service.handleEvent(reversal("E9", e7.id(), 6))));
+        assertSame(e9, posted(service.handleEvent(reversal("E9b", e7.id(), 6))));
         assertEquals(2, ledgerEntryRepository.findByAccountId(ACC).size());
     }
 
     @Test
-    void secondReversalOfTheSameEntryIsRejected() {
-        service.handleEvent(event("E7", EventType.DEBIT, "620.00", 5, 2));
-        service.handleEvent(reversal("E9", "E7", 6));
-
-        rejected(service.handleEvent(reversal("E9b", "E7", 6)), RejectionReason.ALREADY_REVERSED);
-    }
-
-    @Test
-    void reversalOfUnknownRequestIsRejected() {
-        rejected(service.handleEvent(reversal("R1", "E99", 6)), RejectionReason.ENTRY_NOT_FOUND);
+    void reversalOfUnknownEntryIsRejected() {
+        rejected(service.handleEvent(reversal("R1", UUID.randomUUID(), 6)), RejectionReason.ENTRY_NOT_FOUND);
     }
 
     @Test

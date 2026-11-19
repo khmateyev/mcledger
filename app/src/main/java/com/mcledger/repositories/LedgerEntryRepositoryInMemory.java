@@ -15,7 +15,7 @@ public class LedgerEntryRepositoryInMemory implements LedgerEntryRepository {
 
     private final List<LedgerEntry> db = new CopyOnWriteArrayList<>();
     private final Map<String, LedgerEntry> byRequestId = new ConcurrentHashMap<>();
-    private final Map<UUID, LedgerEntry> reversalByEntryId = new ConcurrentHashMap<>();
+    private final Map<UUID, LedgerEntry> byId = new ConcurrentHashMap<>();
 
     @Override
     public Optional<LedgerEntry> findByRequestId(String requestId) {
@@ -23,8 +23,8 @@ public class LedgerEntryRepositoryInMemory implements LedgerEntryRepository {
     }
 
     @Override
-    public Optional<LedgerEntry> findReversalOf(UUID entryId) {
-        return ofNullable(reversalByEntryId.get(entryId));
+    public Optional<LedgerEntry> findById(UUID id) {
+        return ofNullable(byId.get(id));
     }
 
     @Override
@@ -38,7 +38,7 @@ public class LedgerEntryRepositoryInMemory implements LedgerEntryRepository {
         if (previous != null) {
             return previous;
         }
-        entry.reversesEntryId().ifPresent(id -> reversalByEntryId.putIfAbsent(id, entry));
+        byId.put(entry.id(), entry);
         db.add(entry);
         return entry;
     }
