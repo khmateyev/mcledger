@@ -24,6 +24,7 @@ public class AppContainer {
 
     private final ConfigService configService = fixedConfigService()
         .overdraftFee(Money.of(AED, "25.00"))
+        .overdraftFee(Money.of(BHD, "2.560"))
         .dailyInterestRate(AED, new BigDecimal("0.0004"))
         .dailyInterestRate(BHD, new BigDecimal("0.0004"))
         .holdExpiryDays(7)

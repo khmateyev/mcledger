@@ -172,14 +172,15 @@ class DayCloseServiceTest {
     }
 
     @Test
-    void currencyWithoutConfiguredFeeIsNeverCharged() {
+    void bhdAccountIsChargedTheBhdFee() {
         ledgerService.handleEvent(eventRequest().requestId("B1").eventType(EventType.DEBIT).accountId(ACC_BHD)
                 .amount(Money.of(BHD, "1.000")).bookedDay(day(1)).valueDate(day(1)).build());
 
         final var result = service.closeDay(ACC_BHD, day(1));
 
-        assertEquals(Money.of(BHD, "-1.000"), result.closingLedgerBalance());
-        assertTrue(result.feeAssessments().isEmpty());
+        // AED 25.00 converted at the USD pegs: 25 / 3.6725 * 0.376 = 2.5596 -> BHD 2.560
+        assertEquals(Money.of(BHD, "-2.560"), result.feeAssessments().get(0).amount());
+        assertEquals(Money.of(BHD, "-3.560"), result.closingLedgerBalance());
     }
 
     @Test
