@@ -11,3 +11,6 @@ the idea is to be able to load configs from anywhere - pass to the app at startu
 
 ## 2026-11-19 19:50
 add basic impl of LedgerService, with EventHandlerFactory having CREDIT, DEBIT and REVERSAL
+
+## 2026-11-19 20:04
+add EventSimulatorTest replaying events from task
